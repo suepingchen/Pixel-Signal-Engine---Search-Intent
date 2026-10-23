@@ -1,0 +1,442 @@
+{
+  "instruction_to_ai_studio": "Build a web app called Pixel Signal Engine from this spec. Use React + Vite for the front end and an Express server (server.ts) for all API calls, so no API key ever reaches the browser. All statistics and all text in the readout are computed in code. The app does not call Gemini or any other AI model at run time. Every threshold below is a starting value and must be editable in a Settings panel. Ship with clearly labelled sample data so every screen works before real data is connected. All data comes in as CSV uploads (or a linked Google Sheet); no database is needed for the pilot. Store uploads and results in the app and export them as CSV and Markdown.",
+  "app": {
+    "name": "Pixel Signal Engine",
+    "client": "Google Pixel India (Speedboat Q4 2026 pilot)",
+    "one_line": "Find out which Meta activity turns consideration into Pixel searches, prove it with a fair test, and move money there.",
+    "main_kpi": "Search intent lift: more Pixel and switching searches in each city group's ON weeks (extra Meta activity) than in its OFF weeks.",
+    "read_alongside": [
+      "Consideration and awareness lift from Meta Brand Lift (entered as is, not recalculated)",
+      "Device lift from the Google and Meta clean room (directional only, not one-to-one with activations)"
+    ]
+  },
+  "hard_rules": [
+    "Channel under test is Meta only (Instagram, Facebook).",
+    "Each city group is compared only with itself (its ON weeks vs its OFF weeks). Never compare one city group's search index with another city group's.",
+    "Google Trends values (the only search source) are a relative 0-100 index per request. Only compare values that came from the same request (same state, same terms, same date range). Never add Trends values across regions.",
+    "Only aggregated totals per city group per day or week. No user-level data anywhere.",
+    "Budget moves: total budget unchanged; no channel or tactic changes by more than 10% in a week; every move needs a named Media Lead approval, logged with name, time and comment; nothing is pushed to Meta automatically.",
+    "Brand Lift and device lift are read as provided by Meta / the clean room. The app does not rebuild them."
+  ],
+  "search_data": {
+    "why": "Pixel search interest by city group, over time, is the main outcome. It comes from Google Trends by state only; no search data is requested from the client.",
+    "primary_source": {
+      "id": "google_trends",
+      "label": "Google Trends by state (the only search source)",
+      "status": "Available now. India data goes down to state level only, so city groups follow state lines (14 starting groups).",
+      "warning_to_show": "A state's number includes towns we don't advertise in, so a real lift looks smaller. Show this next to every result.",
+      "details": "See google_trends_connection."
+    }
+  },
+  "google_trends_connection": {
+    "why": "Main search source. Pixel search interest by state, over time.",
+    "important_limits": [
+      "Google Trends gives a relative index (0-100), not search counts. Within one request the index is consistent; across requests it is rescaled, so one geo's values can't be compared with another's.",
+      "Trends time series can be filtered to India and to Indian states (sub-regions, for example IN-MH), not to cities. 'Interest by city' is only a one-off ranking for the whole date range, not a series over time, so the app works at state level.",
+      "Low-volume terms or geos return many zeros. The app must flag any series with more than 20% zero values as 'too thin to read'.",
+      "Trends returns daily points only for shorter date ranges and switches to weekly points for longer ones. The app must store whatever resolution comes back and record it.",
+      "Trends data is sampled, so a repeat request can differ slightly. Save every raw response with its request parameters and fetch time."
+    ],
+    "connectors": [
+      {
+        "id": "official_trends_api",
+        "label": "Google Trends API (official, early-access alpha)",
+        "status": "Use only if the team has been granted alpha access. Endpoint, auth and quota come from Google's access documentation; do not hard-code a guessed URL.",
+        "config": [
+          "GOOGLE_TRENDS_API_ENDPOINT",
+          "GOOGLE_TRENDS_API_KEY or service-account credentials"
+        ],
+        "notes": "Google describes this data as consistently scaled across requests. If confirmed in the connection test, cross-request scaling rules can be relaxed."
+      },
+      {
+        "id": "serpapi_google_trends",
+        "label": "SerpApi Google Trends (paid, commercial)",
+        "status": "Works today with a paid key.",
+        "config": [
+          "SERPAPI_API_KEY (server-side env var)"
+        ],
+        "request": {
+          "url": "https://serpapi.com/search.json",
+          "params": {
+            "engine": "google_trends",
+            "data_type": "TIMESERIES",
+            "q": "comma-separated terms, max 5 per request",
+            "geo": "IN or a sub-region code such as IN-MH",
+            "date": "YYYY-MM-DD YYYY-MM-DD covering baseline + test + cooldown in ONE request",
+            "tz": "-330"
+          }
+        },
+        "notes": "Check SerpApi's current documentation for parameter names and response fields before building; adjust the parser to match."
+      },
+      {
+        "id": "csv_upload",
+        "label": "Manual export from trends.google.com",
+        "status": "Always available fallback.",
+        "how": "On trends.google.com/explore set the terms, geo (India > state) and date range, then download 'Interest over time' as CSV and upload it in the Trends tab.",
+        "parser": "Skip the header lines Trends adds, read the date column and one column per term, convert '<1' to 0.5 and flag it."
+      }
+    ],
+    "connection_test": "A button in Settings that runs one small request per connector, shows the returned resolution (daily or weekly), the geo levels accepted, and saves the raw response. The app uses the first connector that passes.",
+    "terms": {
+      "editable": true,
+      "max_per_request": 5,
+      "anchor_rule": "Always include the same anchor term in every request so ratios stay stable if requests ever need joining.",
+      "starting_set": [
+        {
+          "term": "google pixel",
+          "group": "brand",
+          "role": "anchor"
+        },
+        {
+          "term": "pixel phone",
+          "group": "brand"
+        },
+        {
+          "term": "iphone to pixel",
+          "group": "switching"
+        },
+        {
+          "term": "switch from iphone to android",
+          "group": "switching"
+        }
+      ],
+      "note": "Starting terms only. The PMM and Kuang's team confirm the final list, including the current Pixel model name."
+    },
+    "geos": {
+      "editable": true,
+      "level": "state (Trends sub-region; India has no city-level time series)",
+      "note": "Group 3 puts Delhi, Haryana and Uttar Pradesh on one schedule because Delhi NCR spans all three; each region keeps its own series in the read. Use the region codes Trends returns in the connection test. Groups 11-14 may be too thin to read; flag them and leave them out of the read if more than 20% of values are zero.",
+      "starting_list": [
+        {
+          "trends_region": "Karnataka",
+          "group": 1,
+          "pixel_cities": [
+            "Bengaluru",
+            "Mysore",
+            "Mangalore"
+          ]
+        },
+        {
+          "trends_region": "Maharashtra",
+          "group": 2,
+          "pixel_cities": [
+            "Mumbai",
+            "Thane",
+            "Pune",
+            "Nashik"
+          ]
+        },
+        {
+          "trends_region": "Delhi",
+          "group": 3,
+          "pixel_cities": [
+            "Delhi"
+          ]
+        },
+        {
+          "trends_region": "Haryana",
+          "group": 3,
+          "pixel_cities": [
+            "Gurugram",
+            "Faridabad"
+          ]
+        },
+        {
+          "trends_region": "Uttar Pradesh",
+          "group": 3,
+          "pixel_cities": [
+            "Noida",
+            "Ghaziabad",
+            "Lucknow",
+            "Agra"
+          ]
+        },
+        {
+          "trends_region": "Gujarat",
+          "group": 4,
+          "pixel_cities": [
+            "Surat",
+            "Ahmedabad",
+            "Vadodara"
+          ]
+        },
+        {
+          "trends_region": "Andhra Pradesh",
+          "group": 5,
+          "pixel_cities": [
+            "Visakhapatnam",
+            "Vijayawada",
+            "Guntur",
+            "Amaravati (to confirm vs Amravati, Maharashtra)"
+          ]
+        },
+        {
+          "trends_region": "Telangana",
+          "group": 6,
+          "pixel_cities": [
+            "Hyderabad",
+            "Secunderabad"
+          ]
+        },
+        {
+          "trends_region": "Tamil Nadu",
+          "group": 7,
+          "pixel_cities": [
+            "Chennai",
+            "Coimbatore"
+          ]
+        },
+        {
+          "trends_region": "Kerala",
+          "group": 8,
+          "pixel_cities": [
+            "Kochi",
+            "Ernakulam",
+            "Trivandrum",
+            "Kozhikode",
+            "Thrissur",
+            "Kannur"
+          ]
+        },
+        {
+          "trends_region": "West Bengal",
+          "group": 9,
+          "pixel_cities": [
+            "Kolkata"
+          ]
+        },
+        {
+          "trends_region": "Rajasthan",
+          "group": 10,
+          "pixel_cities": [
+            "Jaipur",
+            "Jodhpur",
+            "Bikaner"
+          ]
+        },
+        {
+          "trends_region": "Chandigarh",
+          "group": 11,
+          "pixel_cities": [
+            "Chandigarh"
+          ]
+        },
+        {
+          "trends_region": "Madhya Pradesh",
+          "group": 12,
+          "pixel_cities": [
+            "Indore"
+          ]
+        },
+        {
+          "trends_region": "Assam",
+          "group": 13,
+          "pixel_cities": [
+            "Guwahati"
+          ]
+        },
+        {
+          "trends_region": "Odisha",
+          "group": 14,
+          "pixel_cities": [
+            "Bhubaneswar"
+          ]
+        }
+      ]
+    },
+    "fetch_schedule": "Pull baseline + test + cooldown (about 24 weeks) in ONE request per term set so Trends returns daily points (longer ranges come back weekly, which breaks the 3-day washout). Group 3 (Delhi, Haryana, Uttar Pradesh) keeps three separate series that share one schedule; do not add Trends values across regions. Fetch once before launch, then weekly, re-requesting the full range each time so the series stays on one scale. For the sizing check, a separate longer pull (12+ months, weekly) is fine."
+  },
+  "test_design": {
+    "type": "ON/OFF weeks within each city group, staggered across groups",
+    "on_weeks": 2,
+    "off_weeks": 2,
+    "stagger": "Split city groups into two halves of similar total search volume. Half A starts ON while half B starts OFF, so every week has both ON and OFF groups and calendar effects (festivals, cricket) fall on both.",
+    "washout_days": 3,
+    "washout_rule": "Leave out the first washout_days of each OFF period from the read, because the previous ON weeks may still be working.",
+    "baseline_weeks": 12,
+    "test_weeks": 8,
+    "cooldown_weeks": 4,
+    "comparison_level": "Pixel team chooses. A. Go dark: OFF = no Pixel Meta ads. B. Boost (recommended): OFF = business as usual, ON = business as usual plus extra Meta weight. Search and outdoor ads run the same in ON and OFF weeks.",
+    "schedule_output": "The app generates schedule.csv (group_id, city, date, phase ON/OFF/WASHOUT/COOLDOWN, half) for ACT to set up in Meta, and locks it once approved. Changes after launch are blocked unless a reason is logged.",
+    "all_values_are_starting_values": "Length, cooldown and start date to agree with Kuang's team (MSMO) and the Pixel team.",
+    "units": {
+      "cities": "Pixel's 35 campaign cities (list from the Pixel team, 22 Oct 2026), mapped to 16 Google Trends regions and 14 starting groups (see google_trends_connection.geos).",
+      "grouping": "Pixel cities are grouped by state, because Google Trends gives India data by state. Each group shares one ON/OFF schedule. Each Trends region keeps its own series in the read (group 3 has three: Delhi, Haryana, Uttar Pradesh).",
+      "grouping_rules": [
+        "Fixed before launch and locked with the schedule; never changed after seeing results.",
+        "Groups follow state lines, because Google Trends gives India data by state (14 starting groups; group 3 = Delhi, Haryana and Uttar Pradesh on one schedule).",
+        "With Google Trends, a state whose series has more than 20% zeros still follows the schedule but is left out of the read.",
+        "Nearby cities go in the same group, so people travelling between them don't spoil the read (for example Delhi NCR: Delhi, Gurugram, Noida, Ghaziabad and Faridabad)."
+      ],
+      "output": "city_groups.csv (city, group_id, state, reason) for review and approval."
+    }
+  },
+  "data_inputs": [
+    {
+      "file": "city_groups.csv",
+      "fields": [
+        "city",
+        "group_id",
+        "state",
+        "reason"
+      ],
+      "rule": "Locked before launch."
+    },
+    {
+      "file": "trends_timeseries (from connector or CSV)",
+      "grain": "state x date x term",
+      "fields": [
+        "geo",
+        "date",
+        "term",
+        "index_value",
+        "is_partial",
+        "resolution",
+        "request_id",
+        "fetched_at"
+      ]
+    },
+    {
+      "file": "meta_delivery.csv",
+      "grain": "date x city x ad set",
+      "fields": [
+        "date",
+        "city",
+        "campaign",
+        "ad_set",
+        "tactic",
+        "spend",
+        "impressions",
+        "reach",
+        "video_views",
+        "thruplays",
+        "link_clicks",
+        "saves",
+        "shares",
+        "comments",
+        "reactions",
+        "follows"
+      ],
+      "note": "One ad set per city (or per city group) so delivery and engagement can be read per group."
+    },
+    {
+      "file": "brand_lift.csv",
+      "grain": "study x cell x metric",
+      "fields": [
+        "study_id",
+        "cell_or_tactic",
+        "metric (awareness | consideration | intent)",
+        "lift_pct",
+        "ci_low",
+        "ci_high",
+        "start_date",
+        "end_date"
+      ],
+      "rule": "Counted as supporting proof only if ci_low > 0."
+    },
+    {
+      "file": "device_lift.csv",
+      "grain": "study x cell",
+      "fields": [
+        "study_id",
+        "cell_or_tactic",
+        "metric",
+        "lift_value",
+        "ci_low",
+        "ci_high",
+        "start_date",
+        "end_date"
+      ],
+      "rule": "Always labelled 'directional'. Used to compare tactics, never as a sales number."
+    },
+    {
+      "file": "budget_plan.csv",
+      "fields": [
+        "week_start",
+        "channel",
+        "tactic",
+        "weekly_budget_inr"
+      ]
+    },
+    {
+      "file": "calendar.csv",
+      "fields": [
+        "date",
+        "city",
+        "event (festival | cricket | launch | promo)",
+        "note"
+      ],
+      "use": "Shown on charts and used as a control in Prove."
+    }
+  ],
+  "tabs": [
+    {
+      "id": "setup",
+      "title": "1. Setup",
+      "content": "The 35-city list mapped to 16 Trends regions and 14 city groups, thin-series check (>20% zeros), search connector and connection test, the ON/OFF schedule (timeline per city group with ON, OFF, washout and cooldown shaded), and the approval lock."
+    },
+    {
+      "id": "trends",
+      "title": "2. Search data",
+      "content": "One chart per Trends region, arranged by city group: the search index over time with ON/OFF shading and calendar events. Flags thin series (>20% zeros). Shows connector, resolution and fetch time for every series. Never plots two regions on one shared scale."
+    },
+    {
+      "id": "sizing",
+      "title": "3. Sizing check (before launch)",
+      "logic": "Using pre-launch history only (12+ months of weekly Trends plus the daily baseline), run placebo schedules: pretend the ON/OFF pattern started on many past dates, measure the fake lift each time, and report the smallest lift the pilot can reliably detect as 'The pilot can reliably detect search lifts of about X% or more'. If X is too high, suggest a longer test, bigger extra Meta weight or broader search terms."
+    },
+    {
+      "id": "find",
+      "title": "4. Find (early clues)",
+      "logic": "For each city group, test each Meta metric (video views, thruplays, link clicks, saves, shares, comments, reactions, follows; per tactic where available) against the search index at delays of 0, 1, 2, 3, 5, 7, 10 and 14 days (or 0, 1, 2 weeks if only weekly data). Keep a signal only if all four pass: correlation of 0.40 or more; holds in at least 60% of city groups; holds in both the first and second half of the period; survives a Benjamini-Hochberg false-discovery correction at 10% across all tests. Label the shortlist 'Candidates, not proven' and show the typical delay for each."
+    },
+    {
+      "id": "prove",
+      "title": "5. Prove (real or luck?)",
+      "logic": "Starting method, to confirm with Kuang's team (MSMO). Per Trends region: model the search index with an ON indicator, the region's own trend, day-of-week and calendar events, excluding washout days. Pool across regions with region fixed effects (regions in the same city group share the ON/OFF schedule). Lift = average difference between ON and OFF, also shown as % of the region's OFF average. p-value from a permutation test that re-randomises the ON/OFF schedule many times. Validated only if pooled lift > 0 and p < 0.05; otherwise 'Not confirmed'. Show the sizing result next to every result. Show Brand Lift and device lift beside it as 'read alongside'."
+    },
+    {
+      "id": "act",
+      "title": "6. Act (move money)",
+      "logic": "Recommend shifts only toward Meta tactics with a validated search lift (and, where available, a Brand Lift with ci_low > 0). Money comes from tactics that are unproven or not confirmed. Enforce the budget rules. Each shift has Approve / Reject for the Media Lead with name, time and comment logged."
+    },
+    {
+      "id": "readout",
+      "title": "7. Weekly readout",
+      "logic": "A code-built summary from computed numbers only: main KPI result, Find shortlist, Brand Lift and device lift read alongside, approved budget moves, data gaps. Exports: validated signals (CSV), budget plan (CSV), approval log (CSV), schedule (CSV), readout (Markdown)."
+    }
+  ],
+  "human_checkpoints": [
+    "Media planner reviews the city groups and ON/OFF schedule; Kuang's team (MSMO) agrees the city groups, terms, ON/OFF schedule and Prove method before launch.",
+    "Pixel team approves the city groups and the OFF-week treatment.",
+    "Media Lead signs off the flight schedule and budget; Media Lead and Pixel PMM sign off ad creative and claims (outside the app).",
+    "Media Lead approves every budget move."
+  ],
+  "sample_data": {
+    "label_on_screen": "SAMPLE DATA - illustrative only",
+    "generate": "The 35 cities mapped to 16 Trends regions in 14 city groups; 12 baseline weeks + 8 test weeks + 4 cooldown weeks of daily Trends-style index values (0-100) per region, with weekly seasonality, a festival bump in some weeks, and a built-in lift of about 6% in ON weeks that appears about 5 days after Instagram saves rise. Matching Meta delivery per city: business-as-usual spend every week, extra spend only in ON weeks. Two Brand Lift cells and two device lift cells."
+  },
+  "acceptance_tests": [
+    "No chart or calculation compares the index of one region or city group with another, and Trends values are never added across regions.",
+    "Removing the Trends data makes Prove show 'Waiting for search data' instead of a result.",
+    "Washout days are excluded from the ON vs OFF read.",
+    "A series with more than 20% zeros is flagged as too thin to read.",
+    "Every budget proposal keeps the total unchanged and moves no channel or tactic by more than 10% in a week.",
+    "No budget shift goes to a tactic without a validated search lift.",
+    "Brand Lift with ci_low <= 0 is shown but not counted as supporting proof.",
+    "The readout contains no number that was not computed in code.",
+    "No API key appears in browser network requests or bundled code.",
+    "Each city group's schedule and membership cannot change after launch without a logged reason.",
+    "Every search result shows the state-level dilution warning."
+  ],
+  "out_of_scope_for_pilot": [
+    "Neighbourhood or PIN-code level tests",
+    "Comparing cities with each other",
+    "YouTube, X, DV360 and connected TV",
+    "Automatic changes in Meta Ads Manager",
+    "Sales data by area",
+    "City-level search counts: not requested from the client; the pilot uses Google Trends by state only.",
+    "Comment analysis (why people hesitate) and any Gemini or other AI model calls: dropped from the pilot.",
+    "BigQuery or any other database: add later if the pilot scales or a data partner can only share through it."
+  ]
+}

@@ -1,0 +1,50 @@
+// Runs the engine on sample data and checks the acceptance rules. Usage: npm run check
+import { DEFAULT_SETTINGS } from '../src/engine/config';
+import { sampleDataset } from '../src/engine/sample';
+import { prove } from '../src/engine/prove';
+import { find } from '../src/engine/find';
+import { sizing } from '../src/engine/sizing';
+import { act } from '../src/engine/act';
+import { readoutMarkdown } from '../src/engine/readout';
+import { phaseOf, scheduleRows } from '../src/engine/schedule';
+import { parseTrends } from '../src/engine/csv';
+
+const s = { ...DEFAULT_SETTINGS, permutations: 2000 };
+let failed = 0;
+const check = (name: string, ok: boolean, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  ' + detail : ''}`); if (!ok) failed++; };
+
+const t0 = Date.now();
+const ds = sampleDataset(s);
+const prv = prove(ds, s);
+const fnd = find(ds, s);
+const siz = sizing(ds, s);
+const a = act(ds.budget, fnd, prv, s);
+console.log(`ran in ${Date.now() - t0} ms`);
+console.log('Prove:', prv.status, prv.pooledLiftPct.toFixed(2) + '%', 'p=' + prv.pValue.toFixed(3), 'excluded:', prv.excluded.join(', '));
+console.log('Sizing:', siz.message);
+console.log('Find shortlist:', fnd.shortlist.map((x) => `${x.tactic}/${x.metric}@${x.lag}d r=${x.meanR.toFixed(2)}`).join('; '));
+console.log('Act:', a.note, a.moves.map((m) => `${m.tactic} ${m.changePct.toFixed(1)}%`).join(', '));
+
+check('14 city groups from 16 regions', ds.groups.length === 14 && ds.regions.length === 16);
+check('Group 3 = Delhi, Haryana, Uttar Pradesh', JSON.stringify(ds.groups.find((g) => g.id === 3)?.regions) === JSON.stringify(['Delhi', 'Haryana', 'Uttar Pradesh']));
+check('Halves are A and B, roughly even', Math.abs(ds.groups.filter((g) => g.half === 'A').length - 7) <= 2);
+const rows = scheduleRows(ds, s);
+check('Washout days exist and only in OFF periods after ON', rows.some((r) => r.phase === 'WASHOUT'));
+const gA = ds.groups.find((g) => g.half === 'A')!;
+check('Half A: day 1 ON, day 15 WASHOUT, day 18 OFF', phaseOf('2026-12-07', 'A', s) === 'ON' && phaseOf('2026-12-21', 'A', s) === 'WASHOUT' && phaseOf('2026-12-24', 'A', s) === 'OFF', gA.regions.join('/'));
+check('Half B: first OFF block has no washout', phaseOf('2026-12-07', 'B', s) === 'OFF' && phaseOf('2026-12-21', 'B', s) === 'ON' && phaseOf('2027-01-04', 'B', s) === 'WASHOUT');
+check('Thin regions flagged (>20% zero days)', prv.excluded.length > 0 && prv.excluded.every((r) => ['Assam', 'Odisha'].includes(r)), prv.excluded.join(', '));
+check('Sample lift is validated', prv.status === 'Validated');
+check('Removing Trends data gives "Waiting for search data"', prove({ ...ds, trends: [] }, s).status === 'Waiting for search data');
+check('Budget total unchanged', a.totalAfter === a.totalBefore);
+check('No tactic moves more than 10%', a.moves.every((m) => Math.abs(m.changePct) <= 10.0001));
+check('No shift toward a tactic without a signal', a.moves.filter((m) => m.changePct > 0).every((m) => fnd.shortlist.some((x) => x.tactic === m.tactic)));
+const notValid = act(ds.budget, fnd, { ...prv, status: 'Not confirmed' }, s);
+check('No moves if Prove is not validated', notValid.moves.every((m) => m.changePct === 0));
+const md = readoutMarkdown(ds, prv, fnd, siz, a, []);
+check('Readout carries the dilution warning', md.includes("A state's number includes towns"));
+check('Brand Lift with ci_low <= 0 flagged as not supporting', md.includes('not counted as supporting proof'));
+const tr = parseTrends('Category: All categories\n\nDay,google pixel: (Maharashtra),pixel phone: (Maharashtra)\n2026-12-07,55,<1\n2026-12-08,60,12\n');
+check('Trends CSV export parsed, "<1" becomes 0.5', tr.length === 4 && tr[1].value === 0.5 && tr[0].region === 'Maharashtra');
+console.log(failed ? `\n${failed} check(s) failed` : '\nAll checks passed');
+process.exit(failed ? 1 : 0);
