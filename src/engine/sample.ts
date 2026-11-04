@@ -92,7 +92,7 @@ export function sampleDataset(s: Settings = DEFAULT_SETTINGS, seed = 7): Dataset
   }));
 
   return {
-    label: 'SAMPLE DATA - illustrative only', regions: STARTING_REGIONS, groups, trends, meta, brandLift, deviceLift, budget,
+    label: 'SAMPLE DATA: made-up numbers until real Google Trends and Meta data are loaded', regions: STARTING_REGIONS, groups, trends, meta, brandLift, deviceLift, budget,
     calendar, trendsResolution: 'daily',
   };
 }

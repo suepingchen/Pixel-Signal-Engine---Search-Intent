@@ -9,7 +9,7 @@ Pixel's 35 campaign cities are grouped by state into 14 city groups, because Goo
 ## Tabs
 
 1. **Setup**: test settings, the 14 city groups (with thin-region check), the on/off schedule, approval lock, CSV uploads, connection test. Download `schedule.csv` and `city_groups.csv`.
-2. **Search data**: one chart per Trends region with on weeks, washout and cooldown shaded. Each region on its own scale.
+2. **Google Trends**: one chart per state with on weeks, washout and cooldown shaded. Each region on its own scale.
 3. **Sizing check**: practice runs on pre-launch data give the smallest lift the pilot can reliably detect.
 4. **Find**: Meta metrics (per tactic) that rise a few days before searches. Four checks: correlation of 0.40 or more, at least 60% of regions, both halves of the test, Benjamini-Hochberg at 10%. Delays 0 to 14 days. Candidates, not proven.
 5. **Prove**: on vs off weeks per region (own trend, day of week, events; washout and cooldown left out), pooled by city group, with a delivery check, permutation test that reshuffles which half each group is in. Validated only if lift > 0 and p < 0.05. Brand Lift and device lift shown alongside, as provided.

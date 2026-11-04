@@ -15,7 +15,7 @@ import { addDays } from './engine/util';
 import { Btn, Card, Note, Table, download } from './components/ui';
 import { Legend, SeriesChart } from './components/Chart';
 
-const TABS = ['1. Setup', '2. Search data', '3. Sizing check', '4. Find', '5. Prove', '6. Act', '7. Weekly readout'] as const;
+const TABS = ['1. Setup', '2. Google Trends', '3. Sizing check', '4. Find', '5. Prove', '6. Act', '7. Weekly readout'] as const;
 const pct = (v: number) => (isFinite(v) ? `${v.toFixed(1)}%` : 'n/a');
 const now = () => new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST';
 
@@ -173,9 +173,9 @@ export default function App() {
           </>
         )}
 
-        {tab === '2. Search data' && (
-          <Card title="Pixel search index by Trends region (each region on its own scale)" right={<Legend />}>
-            <div className="mb-3 space-y-2"><Note tone="warn">{DILUTION_WARNING}</Note><Note>Pull baseline, test and cooldown in one request per state so Trends returns daily numbers. Each new pull is rescaled and re-sampled, so the final read uses one saved final pull.</Note></div>
+        {tab === '2. Google Trends' && (
+          <Card title="Pixel searches in each state, from Google Trends (0 to 100, each state on its own scale)" right={<Legend />}>
+            <div className="mb-3 space-y-2"><Note tone="warn">{DILUTION_WARNING}</Note><Note>Download the whole period (baseline, test and cooldown) in one go for each state, so Trends gives a number for every day. Trends numbers shift slightly each time you download, so the final result uses one saved download.</Note></div>
             <div className="grid md:grid-cols-2 gap-4">
               {series.map((s) => {
                 const half = ds.groups.find((g) => g.id === s.group)?.half ?? 'A';

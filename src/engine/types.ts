@@ -108,7 +108,7 @@ export interface Settings {
 }
 
 export interface Dataset {
-  label: 'SAMPLE DATA - illustrative only' | 'Uploaded data';
+  label: 'SAMPLE DATA: made-up numbers until real Google Trends and Meta data are loaded' | 'Uploaded data';
   regions: Region[];
   groups: GroupDef[];
   trends: TrendsPoint[];

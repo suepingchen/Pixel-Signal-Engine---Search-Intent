@@ -380,7 +380,7 @@
     },
     {
       "id": "trends",
-      "title": "2. Search data",
+      "title": "2. Google Trends",
       "content": "One chart per Trends region, arranged by city group: the search index over time with ON/OFF shading and calendar events. Flags thin series (>20% zeros). Shows connector, resolution and fetch time for every series. Never plots two regions on one shared scale."
     },
     {
@@ -416,7 +416,7 @@
     "Media Lead approves every budget move."
   ],
   "sample_data": {
-    "label_on_screen": "SAMPLE DATA - illustrative only",
+    "label_on_screen": "SAMPLE DATA: made-up numbers until real Google Trends and Meta data are loaded",
     "generate": "The 35 cities mapped to 16 Trends regions in 14 city groups; 12 baseline weeks + 8 test weeks + 4 cooldown weeks of daily Trends-style index values (0-100) per region, with weekly seasonality, a festival bump in some weeks, and a built-in lift of about 6% in ON weeks that appears about 5 days after Instagram saves rise. Matching Meta delivery per city: business-as-usual spend every week, extra spend only in ON weeks. Two Brand Lift cells and two device lift cells."
   },
   "acceptance_tests": [
