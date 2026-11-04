@@ -11,6 +11,7 @@ import { deliveryCheck } from './engine/delivery';
 import { Approval, readoutMarkdown, toCsv } from './engine/readout';
 import { parseBrandLift, parseBudget, parseCalendar, parseDeviceLift, parseMeta, parseTrends } from './engine/csv';
 import { Dataset, Settings } from './engine/types';
+import { addDays } from './engine/util';
 import { Btn, Card, Note, Table, download } from './components/ui';
 import { Legend, SeriesChart } from './components/Chart';
 
@@ -103,7 +104,7 @@ export default function App() {
                   </label>
                 ))}
               </div>
-              <p className="text-[11px] text-slate-500 mt-3">Baseline {w.baselineStart} · Test {w.testStart} to {w.cooldownStart} · Cooldown to {w.end}. Search terms: {settings.searchTerms.join(', ')} (starting terms; MSMO and the PMM confirm the list, incl. local-language variants; avoid “pixel” on its own).</p>
+              <p className="text-[11px] text-slate-500 mt-3">Baseline {w.baselineStart} to {addDays(w.testStart, -1)} · Test {w.testStart} to {addDays(w.cooldownStart, -1)} · Cooldown {w.cooldownStart} to {w.end}. Search terms: {settings.searchTerms.join(', ')} (starting terms; MSMO and the PMM confirm the list, incl. local-language variants; avoid “pixel” on its own).</p>
               <div className="flex flex-wrap gap-2 mt-3">
                 {!lock ? <Btn onClick={() => { const n = prompt('Your name to lock the schedule'); if (n) setLock({ name: n, at: now() }); }}>Approve and lock schedule</Btn>
                   : <Btn kind="ghost" onClick={() => { const r = prompt('Reason for unlocking (logged)'); if (r) { setLock(null); setMsg(`Unlocked: ${r} (${now()})`); } }}>Unlock (reason needed)</Btn>}

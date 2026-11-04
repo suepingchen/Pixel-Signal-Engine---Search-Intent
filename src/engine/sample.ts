@@ -80,12 +80,12 @@ export function sampleDataset(s: Settings = DEFAULT_SETTINGS, seed = 7): Dataset
   }
 
   const brandLift: BrandLiftRow[] = [
-    { studyId: 'BL-1', cell: 'Extra Meta activity', metric: 'consideration', liftPct: 3.1, ciLow: 0.8, ciHigh: 5.4, startDate: w.testStart, endDate: w.cooldownStart },
-    { studyId: 'BL-1', cell: 'Extra Meta activity', metric: 'awareness', liftPct: 2.0, ciLow: -0.5, ciHigh: 4.5, startDate: w.testStart, endDate: w.cooldownStart },
+    { studyId: 'BL-1', cell: 'Extra Meta activity', metric: 'consideration', liftPct: 3.1, ciLow: 0.8, ciHigh: 5.4, startDate: w.testStart, endDate: addDays(w.cooldownStart, -1) },
+    { studyId: 'BL-1', cell: 'Extra Meta activity', metric: 'awareness', liftPct: 2.0, ciLow: -0.5, ciHigh: 4.5, startDate: w.testStart, endDate: addDays(w.cooldownStart, -1) },
   ];
   const deviceLift: DeviceLiftRow[] = [
-    { studyId: 'DL-1', cell: 'Reels', metric: 'iPhone to Pixel switchers (index)', liftValue: 1.8, ciLow: 0.4, ciHigh: 3.2, startDate: w.testStart, endDate: w.cooldownStart },
-    { studyId: 'DL-1', cell: 'Carousel', metric: 'iPhone to Pixel switchers (index)', liftValue: 2.4, ciLow: 0.9, ciHigh: 3.9, startDate: w.testStart, endDate: w.cooldownStart },
+    { studyId: 'DL-1', cell: 'Reels', metric: 'iPhone to Pixel switchers (index)', liftValue: 1.8, ciLow: 0.4, ciHigh: 3.2, startDate: w.testStart, endDate: addDays(w.cooldownStart, -1) },
+    { studyId: 'DL-1', cell: 'Carousel', metric: 'iPhone to Pixel switchers (index)', liftValue: 2.4, ciLow: 0.9, ciHigh: 3.9, startDate: w.testStart, endDate: addDays(w.cooldownStart, -1) },
   ];
   const budget: BudgetRow[] = TACTICS.map((t) => ({
     weekStart: w.testStart, channel: 'Meta', tactic: t, weeklyBudgetInr: { Reels: 1500000, Carousel: 1000000, Stories: 800000 }[t],
