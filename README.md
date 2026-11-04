@@ -12,8 +12,8 @@ Pixel's 35 campaign cities are grouped by state into 14 city groups, because Goo
 2. **Search data**: one chart per Trends region with on weeks, washout and cooldown shaded. Each region on its own scale.
 3. **Sizing check**: practice runs on pre-launch data give the smallest lift the pilot can reliably detect.
 4. **Find**: Meta metrics (per tactic) that rise a few days before searches. Four checks: correlation of 0.40 or more, at least 60% of regions, both halves of the test, Benjamini-Hochberg at 10%. Delays 0 to 14 days. Candidates, not proven.
-5. **Prove**: on vs off weeks per region (own trend, day of week, events; washout and cooldown left out), pooled across regions, permutation test that reshuffles which half each group is in. Validated only if lift > 0 and p < 0.05. Brand Lift and device lift shown alongside, as provided.
-6. **Act**: budget moves only toward tactics with a validated search lift and an early signal; same total; max 10% change per tactic per week; Media Lead approves or rejects each move (logged). Nothing is pushed to Meta.
+5. **Prove**: on vs off weeks per region (own trend, day of week, events; washout and cooldown left out), pooled by city group, with a delivery check, permutation test that reshuffles which half each group is in. Validated only if lift > 0 and p < 0.05. Brand Lift and device lift shown alongside, as provided.
+6. **Act**: after the test ends, budget moves only toward tactics with a validated search lift and an early signal; same total; max 10% change per tactic per week; Media Lead approves or rejects each move (logged). Nothing is pushed to Meta.
 7. **Weekly readout**: built in code from computed numbers only. Exports `readout.md`, `validated_signals.csv`, `budget_plan.csv`, `approval_log.csv`.
 
 ## Rules the code enforces
@@ -23,6 +23,12 @@ Pixel's 35 campaign cities are grouped by state into 14 city groups, because Goo
 - Group 3 = Delhi, Haryana and Uttar Pradesh on one schedule, because Delhi NCR spans all three.
 - Regions with more than 20% zero days are flagged and left out of the read (they still follow the schedule).
 - Every result shows the state-level dilution warning.
+- No budget moves during the test: the extra on-week weight stays fixed until the test and cooldown end; Act proposes moves for the next period.
+- The Validated / Not confirmed call is made once, at the end. Weekly reads are labelled "Early read, not final".
+- Each city group counts once in the pooled lift (Delhi, Haryana and Uttar Pradesh are averaged first).
+- A delivery check flags regions where Meta under-delivered the extra weight (on-week spend less than 10% above off weeks).
+- The final read uses one saved Google Trends pull, because each new pull is rescaled and re-sampled.
+- Other Pixel activity (search ads, YouTube, outdoor, "Why I Switched") must run evenly across states during the test.
 
 ## Data
 

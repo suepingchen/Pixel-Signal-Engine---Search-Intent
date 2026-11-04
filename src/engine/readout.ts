@@ -4,22 +4,26 @@ import { ActResult } from './act';
 import { FindResult } from './find';
 import { ProveResult } from './prove';
 import { SizingResult } from './sizing';
+import { DeliveryRow } from './delivery';
 
 export interface Approval { tactic: string; decision: 'Approved' | 'Rejected'; name: string; comment: string; at: string; }
 
 const f1 = (v: number) => (isFinite(v) ? v.toFixed(1) : 'n/a');
 
 /** Weekly readout built in code from computed numbers only. No AI model writes or rewrites it. */
-export function readoutMarkdown(ds: Dataset, prv: ProveResult, fnd: FindResult, siz: SizingResult, a: ActResult, approvals: Approval[]): string {
+export function readoutMarkdown(ds: Dataset, prv: ProveResult, fnd: FindResult, siz: SizingResult, a: ActResult, approvals: Approval[], delivery: DeliveryRow[] = []): string {
   const L: string[] = [];
   L.push('# Pixel Signal Engine: weekly readout', '');
   L.push(`Data: ${ds.label}`, '');
   L.push('## Main KPI: search intent lift', '');
-  L.push(`- Result: **${prv.status}**`);
+  L.push(`- Result: **${prv.status}**${prv.final ? ' (final read)' : ' (early read, not final: the call is made once, after the test and cooldown)'}`);
   L.push(`- Pooled lift in on weeks vs off weeks: ${f1(prv.pooledLiftPct)}% (p ${fmtP(prv.pValue).startsWith('<') ? '' : '= '}${fmtP(prv.pValue)}, ${prv.permutations} reshuffles)`);
   L.push(`- Smallest lift this pilot can reliably detect: about ${f1(siz.mdePct)}%`);
   if (prv.excluded.length) L.push(`- Left out of the read (too many zero days): ${prv.excluded.join(', ')}`);
-  L.push(`- Note: ${DILUTION_WARNING}`, '');
+  const weak = delivery.filter((d) => d.flagged);
+  if (weak.length) L.push(`- Extra Meta weight under-delivered in: ${weak.map((d) => `${d.region} (${f1(d.boostPct)}%)`).join(', ')}`);
+  L.push(`- Note: ${DILUTION_WARNING}`);
+  L.push('- The final read uses one saved Google Trends pull, because each new pull is rescaled and re-sampled.', '');
   L.push('## Read alongside', '');
   for (const b of ds.brandLift) L.push(`- Meta Brand Lift, ${b.metric}: ${f1(b.liftPct)}% (range ${f1(b.ciLow)} to ${f1(b.ciHigh)})${b.ciLow > 0 ? '' : ', not counted as supporting proof'}`);
   for (const d of ds.deviceLift) L.push(`- Device lift (directional), ${d.cell}: ${f1(d.liftValue)} (range ${f1(d.ciLow)} to ${f1(d.ciHigh)})`);

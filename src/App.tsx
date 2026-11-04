@@ -7,6 +7,7 @@ import { prove } from './engine/prove';
 import { find } from './engine/find';
 import { sizing } from './engine/sizing';
 import { act } from './engine/act';
+import { deliveryCheck } from './engine/delivery';
 import { Approval, readoutMarkdown, toCsv } from './engine/readout';
 import { parseBrandLift, parseBudget, parseCalendar, parseDeviceLift, parseMeta, parseTrends } from './engine/csv';
 import { Dataset, Settings } from './engine/types';
@@ -30,7 +31,8 @@ export default function App() {
   const fnd = useMemo(() => find(ds, settings), [ds, settings]);
   const siz = useMemo(() => sizing(ds, settings), [ds, settings]);
   const a = useMemo(() => act(ds.budget, fnd, prv, settings, ds.brandLift), [ds, fnd, prv, settings]);
-  const md = useMemo(() => readoutMarkdown(ds, prv, fnd, siz, a, approvals), [ds, prv, fnd, siz, a, approvals]);
+  const dlv = useMemo(() => deliveryCheck(ds, settings), [ds, settings]);
+  const md = useMemo(() => readoutMarkdown(ds, prv, fnd, siz, a, approvals, dlv), [ds, prv, fnd, siz, a, approvals, dlv]);
   const w = windowOf(settings);
   const typicalDelay = fnd.shortlist.length ? Math.max(...fnd.shortlist.map((x) => x.lag)) : 0;
 
@@ -101,7 +103,7 @@ export default function App() {
                   </label>
                 ))}
               </div>
-              <p className="text-[11px] text-slate-500 mt-3">Baseline {w.baselineStart} · Test {w.testStart} to {w.cooldownStart} · Cooldown to {w.end}. Search terms: {settings.searchTerms.join(', ')}.</p>
+              <p className="text-[11px] text-slate-500 mt-3">Baseline {w.baselineStart} · Test {w.testStart} to {w.cooldownStart} · Cooldown to {w.end}. Search terms: {settings.searchTerms.join(', ')} (starting terms; MSMO and the PMM confirm the list, incl. local-language variants; avoid “pixel” on its own).</p>
               <div className="flex flex-wrap gap-2 mt-3">
                 {!lock ? <Btn onClick={() => { const n = prompt('Your name to lock the schedule'); if (n) setLock({ name: n, at: now() }); }}>Approve and lock schedule</Btn>
                   : <Btn kind="ghost" onClick={() => { const r = prompt('Reason for unlocking (logged)'); if (r) { setLock(null); setMsg(`Unlocked: ${r} (${now()})`); } }}>Unlock (reason needed)</Btn>}
@@ -159,7 +161,7 @@ export default function App() {
 
         {tab === '2. Search data' && (
           <Card title="Pixel search index by Trends region (each region on its own scale)" right={<Legend />}>
-            <div className="mb-3"><Note tone="warn">{DILUTION_WARNING}</Note></div>
+            <div className="mb-3 space-y-2"><Note tone="warn">{DILUTION_WARNING}</Note><Note>Pull baseline, test and cooldown in one request per state so Trends returns daily numbers. Each new pull is rescaled and re-sampled, so the final read uses one saved final pull.</Note></div>
             <div className="grid md:grid-cols-2 gap-4">
               {series.map((s) => {
                 const half = ds.groups.find((g) => g.id === s.group)?.half ?? 'A';
@@ -197,14 +199,18 @@ export default function App() {
           <>
             <Card title="Prove: is the search lift real, or luck?">
               <div className="flex flex-wrap items-end gap-6">
-                <div><div className="text-[11px] text-slate-500">Result</div><div className={`text-xl font-bold ${prv.status === 'Validated' ? 'text-emerald-700' : 'text-slate-700'}`}>{prv.status}</div></div>
+                <div><div className="text-[11px] text-slate-500">Result</div><div className={`text-xl font-bold ${prv.status === 'Validated' ? 'text-emerald-700' : 'text-slate-700'}`}>{prv.status}</div><div className={`text-[11px] font-semibold ${prv.final ? 'text-emerald-700' : 'text-amber-700'}`}>{prv.final ? 'Final read' : 'Early read, not final'}</div></div>
                 <div><div className="text-[11px] text-slate-500">Search intent lift (on vs off weeks)</div><div className="text-xl font-bold">{pct(prv.pooledLiftPct)}</div></div>
                 <div><div className="text-[11px] text-slate-500">p-value ({prv.permutations} reshuffles)</div><div className="text-xl font-bold">{fmtP(prv.pValue)}</div></div>
                 <div><div className="text-[11px] text-slate-500">Smallest reliable lift</div><div className="text-xl font-bold">{pct(siz.mdePct)}</div></div>
               </div>
-              <p className="text-xs text-slate-600 mt-3">Validated only if the lift is above 0 and p is below {settings.pMax}. Each region is compared only with itself, allowing for its own trend, day of week and events; washout and cooldown days are left out. Starting method, to confirm with MSMO.</p>
+              <p className="text-xs text-slate-600 mt-3">Validated only if the lift is above 0 and p is below {settings.pMax}. Each region is compared only with itself, allowing for its own trend, day of week and events; washout and cooldown days are left out. Regions in the same city group are averaged first, so each group counts once. Starting method, to confirm with MSMO.</p>
+              {!prv.final && <div className="mt-3"><Note tone="warn">Early read. Checking every week and stopping when it looks good finds false wins, so the Validated / Not confirmed call is made once, after the test and cooldown end ({w.end}).</Note></div>}
               <div className="mt-3"><Note tone="warn">{DILUTION_WARNING}</Note></div>
               {prv.excluded.length > 0 && <p className="text-xs text-amber-800 mt-2">Left out of the read (too many zero days): {prv.excluded.join(', ')}.</p>}
+            </Card>
+            <Card title="Did the extra Meta weight deliver? (on-week vs off-week spend per region)">
+              <Table head={['Region', 'Group', 'Avg daily spend, on weeks (INR)', 'Off weeks (INR)', 'Boost', 'Check']} rows={dlv.map((d) => [d.region, d.group, isFinite(d.onSpend) ? Math.round(d.onSpend).toLocaleString('en-IN') : 'n/a', isFinite(d.offSpend) ? Math.round(d.offSpend).toLocaleString('en-IN') : 'n/a', pct(d.boostPct), d.flagged ? `Under-delivered (below ${settings.minBoostPct}%)` : 'OK'])} />
             </Card>
             <Card title="By region">
               <Table head={['Region', 'Group', 'Half', 'Lift', 'Off-week average', 'Days read']} rows={prv.regions.map((r) => [r.region, r.group, r.half, pct(r.liftPct), isFinite(r.offMean) ? r.offMean.toFixed(1) : 'n/a', r.n])} />
@@ -219,7 +225,7 @@ export default function App() {
         )}
 
         {tab === '6. Act' && (
-          <Card title="Act: budget moves (Media Lead approval needed; nothing is pushed to Meta)">
+          <Card title="Act: budget moves after the test (Media Lead approval needed; nothing is pushed to Meta)">
             <p className="text-xs text-slate-600 mb-3">{a.note} Total before {a.totalBefore.toLocaleString('en-IN')} INR, after {a.totalAfter.toLocaleString('en-IN')} INR.</p>
             <Table head={['Tactic', 'Current (INR/week)', 'Proposed', 'Change', 'Why', 'Decision']} rows={a.moves.map((m) => {
               const ap = approvals.find((x) => x.tactic === m.tactic);

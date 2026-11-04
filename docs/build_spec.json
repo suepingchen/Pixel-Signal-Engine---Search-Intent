@@ -16,7 +16,10 @@
     "Google Trends values (the only search source) are a relative 0-100 index per request. Only compare values that came from the same request (same state, same terms, same date range). Never add Trends values across regions.",
     "Only aggregated totals per city group per day or week. No user-level data anywhere.",
     "Budget moves: total budget unchanged; no channel or tactic changes by more than 10% in a week; every move needs a named Media Lead approval, logged with name, time and comment; nothing is pushed to Meta automatically.",
-    "Brand Lift and device lift are read as provided by Meta / the clean room. The app does not rebuild them."
+    "Brand Lift and device lift are read as provided by Meta / the clean room. The app does not rebuild them.",
+    "No budget moves during the test: the extra on-week weight stays fixed until the test and cooldown end. Act proposes moves for the next period only.",
+    "The Validated / Not confirmed call is made once, after the test and cooldown. Weekly reads are labelled 'Early read, not final'.",
+    "The final read uses one saved Google Trends pull (each new pull is rescaled and re-sampled)."
   ],
   "search_data": {
     "why": "Pixel search interest by city group, over time, is the main outcome. It comes from Google Trends by state only; no search data is requested from the client.",
@@ -100,7 +103,7 @@
           "group": "switching"
         }
       ],
-      "note": "Starting terms only. The PMM and Kuang's team confirm the final list, including the current Pixel model name."
+      "note": "Starting terms only. Avoid 'pixel' on its own (it also matches cameras and pixel art). The PMM and Kuang's team (MSMO) confirm the final list, including the current Pixel model name and any local-language variants."
     },
     "geos": {
       "editable": true,
@@ -393,12 +396,12 @@
     {
       "id": "prove",
       "title": "5. Prove (real or luck?)",
-      "logic": "Starting method, to confirm with Kuang's team (MSMO). Per Trends region: model the search index with an ON indicator, the region's own trend, day-of-week and calendar events, excluding washout days. Pool across regions with region fixed effects (regions in the same city group share the ON/OFF schedule). Lift = average difference between ON and OFF, also shown as % of the region's OFF average. p-value from a permutation test that re-randomises the ON/OFF schedule many times. Validated only if pooled lift > 0 and p < 0.05; otherwise 'Not confirmed'. Show the sizing result next to every result. Show Brand Lift and device lift beside it as 'read alongside'."
+      "logic": "Starting method, to confirm with Kuang's team (MSMO). Per Trends region: model the search index with an ON indicator, the region's own trend, day-of-week and calendar events, excluding washout days. Pool by city group: average the regions in a group first (so each group counts once), then average across groups. Lift = average difference between ON and OFF, also shown as % of the region's OFF average. p-value from a permutation test that re-randomises the ON/OFF schedule many times. Validated only if pooled lift > 0 and p < 0.05; otherwise 'Not confirmed'. Show the sizing result next to every result. Show Brand Lift and device lift beside it as 'read alongside'. Before the test and cooldown end, show 'Early read, not final'. Also show a delivery check: average daily Meta spend per region in ON vs OFF weeks; flag regions where the boost is below minBoostPct (starting value 10%)."
     },
     {
       "id": "act",
       "title": "6. Act (move money)",
-      "logic": "Recommend shifts only toward Meta tactics with a validated search lift (and, where available, a Brand Lift with ci_low > 0). Money comes from tactics that are unproven or not confirmed. Enforce the budget rules. Each shift has Approve / Reject for the Media Lead with name, time and comment logged."
+      "logic": "Only after the test and cooldown end (no moves mid-test, so the test weight stays fixed): recommend shifts only toward Meta tactics with a validated search lift and an early signal in Find (and, where available, a Brand Lift for that tactic with ci_low > 0). Money comes from tactics that are unproven or not confirmed. Enforce the budget rules. Each shift has Approve / Reject for the Media Lead with name, time and comment logged."
     },
     {
       "id": "readout",
@@ -427,7 +430,10 @@
     "The readout contains no number that was not computed in code.",
     "No API key appears in browser network requests or bundled code.",
     "Each city group's schedule and membership cannot change after launch without a logged reason.",
-    "Every search result shows the state-level dilution warning."
+    "Every search result shows the state-level dilution warning.",
+    "Before the test and cooldown end, Prove shows 'Early read, not final' and Act proposes no moves.",
+    "A region whose on-week Meta spend is not at least minBoostPct above its off weeks is flagged as under-delivered.",
+    "Each city group counts once in the pooled lift (group 3's three regions are averaged first)."
   ],
   "out_of_scope_for_pilot": [
     "Neighbourhood or PIN-code level tests",
@@ -437,6 +443,7 @@
     "Sales data by area",
     "City-level search counts: not requested from the client; the pilot uses Google Trends by state only.",
     "Comment analysis (why people hesitate) and any Gemini or other AI model calls: dropped from the pilot.",
-    "BigQuery or any other database: add later if the pilot scales or a data partner can only share through it."
+    "BigQuery or any other database: add later if the pilot scales or a data partner can only share through it.",
+    "Other Pixel activity (search ads, YouTube, outdoor, 'Why I Switched') must run evenly across states during the test; confirm with the Pixel team and ACT."
   ]
 }

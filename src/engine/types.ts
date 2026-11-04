@@ -102,6 +102,7 @@ export interface Settings {
   lags: number[]; // days
   pMax: number; // 0.05
   weeklyShiftCap: number; // 0.10
+  minBoostPct: number; // flag a region whose on-week Meta spend is less than this % above its off weeks
   permutations: number;
   searchTerms: string[];
 }

@@ -6,6 +6,8 @@ import { dayOfWeek, mean, ols, rng } from './util';
 export interface RegionLift { region: string; group: number; half: Half; liftPct: number; offMean: number; n: number; }
 export interface ProveResult {
   status: 'Validated' | 'Not confirmed' | 'Waiting for search data';
+  /** true only when search data covers the whole test and cooldown. Before that, the read is early and not final. */
+  final: boolean;
   pooledLiftPct: number;
   pValue: number;
   regions: RegionLift[];
@@ -50,7 +52,7 @@ export function prove(ds: Dataset, s: Settings, seed = 11): ProveResult {
   const w = windowOf(s);
   const hasTest = readable.some((r) => r.dates.some((d) => d >= w.testStart));
   if (!readable.length || !hasTest) {
-    return { status: 'Waiting for search data', pooledLiftPct: NaN, pValue: NaN, regions: [], excluded, permutations: 0 };
+    return { status: 'Waiting for search data', final: false, pooledLiftPct: NaN, pValue: NaN, regions: [], excluded, permutations: 0 };
   }
   const halves: Record<number, Half> = Object.fromEntries(ds.groups.map((g) => [g.id, g.half]));
   // Each region has only two possible schedules (half A or half B), so work out both once.
@@ -62,7 +64,11 @@ export function prove(ds: Dataset, s: Settings, seed = 11): ProveResult {
       B: regionLift(rs, 'B', s, w.testStart, w.cooldownStart, ev),
     };
   });
-  const pooledFor = (h: Record<number, Half>) => mean(both.map((b) => b[h[b.rs.group]].liftPct).filter((v) => isFinite(v)));
+  // Pool by city group: regions in the same group (e.g. Delhi, Haryana, Uttar Pradesh) are averaged first,
+  // so each city group counts once, then groups are averaged.
+  const groupIds = [...new Set(both.map((b) => b.rs.group))];
+  const pooledFor = (h: Record<number, Half>) => mean(groupIds.map((gid) =>
+    mean(both.filter((b) => b.rs.group === gid).map((b) => b[h[gid]].liftPct).filter((v) => isFinite(v)))).filter((v) => isFinite(v)));
   const observed = pooledFor(halves);
   // Permutation test: re-randomise which half each group is in, many times, and see how often chance matches the real lift.
   const r = rng(seed);
@@ -74,8 +80,10 @@ export function prove(ds: Dataset, s: Settings, seed = 11): ProveResult {
   }
   const pValue = (beat + 1) / (s.permutations + 1);
   const status = observed > 0 && pValue < s.pMax ? 'Validated' : 'Not confirmed';
+  const lastDate = readable.reduce((m, r) => (r.dates.length && r.dates[r.dates.length - 1] > m ? r.dates[r.dates.length - 1] : m), '');
+  const final = lastDate >= w.end;
   return {
-    status, pooledLiftPct: observed, pValue, excluded, permutations: s.permutations,
+    status, final, pooledLiftPct: observed, pValue, excluded, permutations: s.permutations,
     regions: both.map((b) => {
       const half = halves[b.rs.group];
       const x = b[half];

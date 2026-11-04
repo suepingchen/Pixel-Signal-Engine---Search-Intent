@@ -9,7 +9,8 @@ export interface ActResult { moves: BudgetMove[]; totalBefore: number; totalAfte
  * Budget moves only toward Meta tactics with a validated search lift (Prove validated AND an early signal in Find),
  * and, where a Brand Lift result exists for that tactic, only if its range is above 0 (ci_low > 0).
  * Money comes from tactics with no signal. Total unchanged; no tactic moves by more than the weekly cap.
- * Nothing is pushed to Meta: every move needs a named Media Lead approval in the app.
+ * Moves are proposed only after the test and cooldown end (the test weight must not change mid-test), and apply to the
+ * next campaign period. Nothing is pushed to Meta: every move needs a named Media Lead approval in the app.
  */
 export function act(budget: BudgetRow[], fnd: FindResult, prv: ProveResult, s: Settings, brandLift: BrandLiftRow[] = []): ActResult {
   const rows = budget.filter((b) => b.channel === 'Meta');
@@ -18,6 +19,8 @@ export function act(budget: BudgetRow[], fnd: FindResult, prv: ProveResult, s: S
     moves: rows.map((b) => ({ tactic: b.tactic, current: b.weeklyBudgetInr, proposed: b.weeklyBudgetInr, changePct: 0, reason: 'No change' })),
     totalBefore, totalAfter: totalBefore, note,
   });
+  // The test weight must stay fixed for the whole test, so no budget moves until the test and cooldown have ended.
+  if (!prv.final) return keep('The test is still running, so no budget moves yet: the extra on-week weight stays fixed until the test and cooldown end.');
   if (prv.status !== 'Validated') return keep('Prove has not validated a search lift, so the budget stays as planned.');
   // Brand Lift for a tactic, where available, must also support it (range above 0).
   const blBlocks = (tactic: string) => {

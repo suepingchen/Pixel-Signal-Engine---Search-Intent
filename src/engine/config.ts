@@ -16,7 +16,9 @@ export const DEFAULT_SETTINGS: Settings = {
   lags: [0, 1, 2, 3, 5, 7, 10, 14],
   pMax: 0.05,
   weeklyShiftCap: 0.1,
+  minBoostPct: 10,
   permutations: 2000,
+  // Starting terms. Avoid "pixel" on its own (cameras, pixel art). MSMO and the PMM confirm the final list, incl. local-language variants.
   searchTerms: ['google pixel', 'pixel phone', 'iphone to pixel', 'switch from iphone to android'],
 };
 
