@@ -18,7 +18,7 @@ const ds = sampleDataset(s);
 const prv = prove(ds, s);
 const fnd = find(ds, s);
 const siz = sizing(ds, s);
-const a = act(ds.budget, fnd, prv, s);
+const a = act(ds.budget, fnd, prv, s, ds.brandLift);
 console.log(`ran in ${Date.now() - t0} ms`);
 console.log('Prove:', prv.status, prv.pooledLiftPct.toFixed(2) + '%', 'p=' + prv.pValue.toFixed(3), 'excluded:', prv.excluded.join(', '));
 console.log('Sizing:', siz.message);
@@ -41,6 +41,8 @@ check('No tactic moves more than 10%', a.moves.every((m) => Math.abs(m.changePct
 check('No shift toward a tactic without a signal', a.moves.filter((m) => m.changePct > 0).every((m) => fnd.shortlist.some((x) => x.tactic === m.tactic)));
 const notValid = act(ds.budget, fnd, { ...prv, status: 'Not confirmed' }, s);
 check('No moves if Prove is not validated', notValid.moves.every((m) => m.changePct === 0));
+const blocked = act(ds.budget, fnd, prv, s, [{ studyId: 'X', cell: 'Carousel', metric: 'consideration', liftPct: 1, ciLow: -0.5, ciHigh: 2.5, startDate: '', endDate: '' }]);
+check('Tactic with Brand Lift range including 0 gets no extra budget', (blocked.moves.find((m) => m.tactic === 'Carousel')?.changePct ?? 1) <= 0);
 const md = readoutMarkdown(ds, prv, fnd, siz, a, []);
 check('Readout carries the dilution warning', md.includes("A state's number includes towns"));
 check('Brand Lift with ci_low <= 0 flagged as not supporting', md.includes('not counted as supporting proof'));

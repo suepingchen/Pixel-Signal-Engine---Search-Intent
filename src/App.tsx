@@ -29,7 +29,7 @@ export default function App() {
   const prv = useMemo(() => prove(ds, settings), [ds, settings]);
   const fnd = useMemo(() => find(ds, settings), [ds, settings]);
   const siz = useMemo(() => sizing(ds, settings), [ds, settings]);
-  const a = useMemo(() => act(ds.budget, fnd, prv, settings), [ds, fnd, prv, settings]);
+  const a = useMemo(() => act(ds.budget, fnd, prv, settings, ds.brandLift), [ds, fnd, prv, settings]);
   const md = useMemo(() => readoutMarkdown(ds, prv, fnd, siz, a, approvals), [ds, prv, fnd, siz, a, approvals]);
   const w = windowOf(settings);
   const typicalDelay = fnd.shortlist.length ? Math.max(...fnd.shortlist.map((x) => x.lag)) : 0;
@@ -149,8 +149,9 @@ export default function App() {
                 ))}
               </div>
               <div className="flex gap-2 mt-3">
-                <Btn kind="ghost" onClick={() => { setDs(sampleDataset(settings)); setMsg('Sample data restored'); }}>Use sample data</Btn>
-                <Btn kind="ghost" onClick={() => setDs({ ...ds, groups: buildGroups(ds.regions) })}>Re-balance halves</Btn>
+                <Btn kind="ghost" disabled={!!lock} onClick={() => { setDs(sampleDataset(settings)); setMsg('Sample data restored'); }}>Use sample data</Btn>
+                <Btn kind="ghost" disabled={!!lock} onClick={() => setDs({ ...ds, groups: buildGroups(ds.regions) })}>Re-balance halves</Btn>
+                {lock && <span className="text-[11px] text-slate-500 self-center">City groups and halves are locked. Unlock (with a logged reason) to change them.</span>}
               </div>
             </Card>
           </>
