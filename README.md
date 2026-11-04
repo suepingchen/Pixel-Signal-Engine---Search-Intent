@@ -4,7 +4,7 @@ Speedboat Q4 2026 pilot for Google Pixel India. The engine finds which Meta acti
 
 ## The test in one paragraph
 
-Pixel's 35 campaign cities are grouped by state into 14 city groups, because Google Trends gives India search data by state, not city. Each group alternates 2 weeks with extra Meta activity (on) and 2 weeks without (off), staggered so half the groups are on while the other half are off. The first 3 days of each off period are left out of the read. Each group is compared only with itself. Main KPI: **search intent lift** (Pixel and "switch from iPhone" searches), read alongside Meta Brand Lift (consideration, awareness) and device lift (directional). About 8 test weeks plus a 4-week cooldown, after a 12-week baseline. All values are starting values, to agree with Kuang's team (MSMO).
+Pixel's 35 campaign cities are grouped by state into 14 city groups, because Google Trends gives India search data by state, not city. Each group alternates 2 weeks with extra Meta activity (on) and 2 weeks without (off), staggered so half the groups are on while the other half are off. The first 3 days of each off period are left out of the read. Each group is compared only with itself. Main KPI: **search intent lift** (Pixel and "switch from iPhone" searches), read alongside Meta Brand Lift (consideration, awareness) and device lift (directional). About 8 test weeks plus a 4-week cooldown, after a 12-week baseline. All values are starting values, to agree with MSMO.
 
 ## Tabs
 

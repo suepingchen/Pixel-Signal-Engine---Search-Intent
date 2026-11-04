@@ -95,7 +95,7 @@ export default function App() {
 
         {tab === '1. Setup' && (
           <>
-            <Card title="Test design (starting values, to agree with Kuang's team, MSMO)" right={lock ? <span className="text-[11px] text-emerald-700 font-semibold">Locked by {lock.name}, {lock.at}</span> : null}>
+            <Card title="Test design (starting values, to agree with MSMO)" right={lock ? <span className="text-[11px] text-emerald-700 font-semibold">Locked by {lock.name}, {lock.at}</span> : null}>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                 {([['startDate', 'First ON day'], ['onWeeks', 'On weeks'], ['offWeeks', 'Off weeks'], ['washoutDays', 'Washout days'], ['baselineWeeks', 'Baseline weeks'], ['testWeeks', 'Test weeks'], ['cooldownWeeks', 'Cooldown weeks'], ['permutations', 'Reshuffles']] as [keyof Settings, string][]).map(([k, label]) => (
                   <label key={k} className="flex flex-col gap-1">

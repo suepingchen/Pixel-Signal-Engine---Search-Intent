@@ -103,7 +103,7 @@
           "group": "switching"
         }
       ],
-      "note": "Starting terms only. Avoid 'pixel' on its own (it also matches cameras and pixel art). The PMM and Kuang's team (MSMO) confirm the final list, including the current Pixel model name and any local-language variants."
+      "note": "Starting terms only. Avoid 'pixel' on its own (it also matches cameras and pixel art). The PMM and MSMO confirm the final list, including the current Pixel model name and any local-language variants."
     },
     "geos": {
       "editable": true,
@@ -261,7 +261,7 @@
     "cooldown_weeks": 4,
     "comparison_level": "Pixel team chooses. A. Go dark: OFF = no Pixel Meta ads. B. Boost (recommended): OFF = business as usual, ON = business as usual plus extra Meta weight. Search and outdoor ads run the same in ON and OFF weeks.",
     "schedule_output": "The app generates schedule.csv (group_id, city, date, phase ON/OFF/WASHOUT/COOLDOWN, half) for ACT to set up in Meta, and locks it once approved. Changes after launch are blocked unless a reason is logged.",
-    "all_values_are_starting_values": "Length, cooldown and start date to agree with Kuang's team (MSMO) and the Pixel team.",
+    "all_values_are_starting_values": "Length, cooldown and start date to agree with MSMO and the Pixel team.",
     "units": {
       "cities": "Pixel's 35 campaign cities (list from the Pixel team, 22 Oct 2026), mapped to 16 Google Trends regions and 14 starting groups (see google_trends_connection.geos).",
       "grouping": "Pixel cities are grouped by state, because Google Trends gives India data by state. Each group shares one ON/OFF schedule. Each Trends region keeps its own series in the read (group 3 has three: Delhi, Haryana, Uttar Pradesh).",
@@ -396,7 +396,7 @@
     {
       "id": "prove",
       "title": "5. Prove (real or luck?)",
-      "logic": "Starting method, to confirm with Kuang's team (MSMO). Per Trends region: model the search index with an ON indicator, the region's own trend, day-of-week and calendar events, excluding washout days. Pool by city group: average the regions in a group first (so each group counts once), then average across groups. Lift = average difference between ON and OFF, also shown as % of the region's OFF average. p-value from a permutation test that re-randomises the ON/OFF schedule many times. Validated only if pooled lift > 0 and p < 0.05; otherwise 'Not confirmed'. Show the sizing result next to every result. Show Brand Lift and device lift beside it as 'read alongside'. Before the test and cooldown end, show 'Early read, not final'. Also show a delivery check: average daily Meta spend per region in ON vs OFF weeks; flag regions where the boost is below minBoostPct (starting value 10%)."
+      "logic": "Starting method, to confirm with MSMO. Per Trends region: model the search index with an ON indicator, the region's own trend, day-of-week and calendar events, excluding washout days. Pool by city group: average the regions in a group first (so each group counts once), then average across groups. Lift = average difference between ON and OFF, also shown as % of the region's OFF average. p-value from a permutation test that re-randomises the ON/OFF schedule many times. Validated only if pooled lift > 0 and p < 0.05; otherwise 'Not confirmed'. Show the sizing result next to every result. Show Brand Lift and device lift beside it as 'read alongside'. Before the test and cooldown end, show 'Early read, not final'. Also show a delivery check: average daily Meta spend per region in ON vs OFF weeks; flag regions where the boost is below minBoostPct (starting value 10%)."
     },
     {
       "id": "act",
@@ -410,7 +410,7 @@
     }
   ],
   "human_checkpoints": [
-    "Media planner reviews the city groups and ON/OFF schedule; Kuang's team (MSMO) agrees the city groups, terms, ON/OFF schedule and Prove method before launch.",
+    "Media planner reviews the city groups and ON/OFF schedule; MSMO agrees the city groups, terms, ON/OFF schedule and Prove method before launch.",
     "Pixel team approves the city groups and the OFF-week treatment.",
     "Media Lead signs off the flight schedule and budget; Media Lead and Pixel PMM sign off ad creative and claims (outside the app).",
     "Media Lead approves every budget move."

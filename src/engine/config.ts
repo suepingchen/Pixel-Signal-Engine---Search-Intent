@@ -1,6 +1,6 @@
 import { Region, Settings } from './types';
 
-/** Starting values. Every one is editable in Settings; lengths and method to agree with Kuang's team (MSMO). */
+/** Starting values. Every one is editable in Settings; lengths and method to agree with MSMO. */
 export const DEFAULT_SETTINGS: Settings = {
   onWeeks: 2,
   offWeeks: 2,
