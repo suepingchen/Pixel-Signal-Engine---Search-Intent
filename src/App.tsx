@@ -24,6 +24,7 @@ export default function App() {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [ds, setDs] = useState<Dataset>(() => sampleDataset(DEFAULT_SETTINGS));
   const [lock, setLock] = useState<{ name: string; at: string } | null>(null);
+  const [editValues, setEditValues] = useState(false);
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [msg, setMsg] = useState('');
 
@@ -96,17 +97,29 @@ export default function App() {
         {tab === '1. Setup' && (
           <>
             <Card title="Test design (starting values, to agree with MSMO)" right={lock ? <span className="text-[11px] text-emerald-700 font-semibold">Locked by {lock.name}, {lock.at}</span> : null}>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                {([['startDate', 'First ON day'], ['onWeeks', 'On weeks'], ['offWeeks', 'Off weeks'], ['washoutDays', 'Washout days'], ['baselineWeeks', 'Baseline weeks'], ['testWeeks', 'Test weeks'], ['cooldownWeeks', 'Cooldown weeks'], ['permutations', 'Reshuffles']] as [keyof Settings, string][]).map(([k, label]) => (
-                  <label key={k} className="flex flex-col gap-1">
-                    <span className="text-slate-600">{label}</span>
-                    <input disabled={!!lock} className="border border-slate-300 rounded px-2 py-1" type={k === 'startDate' ? 'date' : 'number'} value={String(settings[k])} onChange={setNum(k)} />
-                  </label>
-                ))}
+              <div className="flex flex-wrap items-end gap-4 text-xs">
+                <label className="flex flex-col gap-1">
+                  <span className="text-slate-600">First ON day (set with ACT)</span>
+                  <input disabled={!!lock} className="border border-slate-300 rounded px-2 py-1" type="date" value={settings.startDate} onChange={setNum('startDate')} />
+                </label>
+                <p className="text-slate-700 pb-1">
+                  {settings.onWeeks} weeks on, {settings.offWeeks} weeks off · {settings.washoutDays}-day washout · {settings.baselineWeeks}-week baseline · {settings.testWeeks} test weeks · {settings.cooldownWeeks}-week cooldown · {settings.permutations.toLocaleString('en-US')} reshuffles
+                  {!lock && <button type="button" className="ml-2 text-blue-600 underline" onClick={() => setEditValues((v) => !v)}>{editValues ? 'Done' : 'Edit values'}</button>}
+                </p>
               </div>
+              {editValues && !lock && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs mt-3">
+                  {([['onWeeks', 'On weeks'], ['offWeeks', 'Off weeks'], ['washoutDays', 'Washout days'], ['baselineWeeks', 'Baseline weeks'], ['testWeeks', 'Test weeks'], ['cooldownWeeks', 'Cooldown weeks'], ['permutations', 'Reshuffles']] as [keyof Settings, string][]).map(([k, label]) => (
+                    <label key={k} className="flex flex-col gap-1">
+                      <span className="text-slate-600">{label}</span>
+                      <input className="border border-slate-300 rounded px-2 py-1" type="number" value={String(settings[k])} onChange={setNum(k)} />
+                    </label>
+                  ))}
+                </div>
+              )}
               <p className="text-[11px] text-slate-500 mt-3">Baseline {w.baselineStart} to {addDays(w.testStart, -1)} · Test {w.testStart} to {addDays(w.cooldownStart, -1)} · Cooldown {w.cooldownStart} to {w.end}. Search terms: {settings.searchTerms.join(', ')} (starting terms; MSMO and the PMM confirm the list, incl. local-language variants; avoid “pixel” on its own).</p>
               <div className="flex flex-wrap gap-2 mt-3">
-                {!lock ? <Btn onClick={() => { const n = prompt('Your name to lock the schedule'); if (n) setLock({ name: n, at: now() }); }}>Approve and lock schedule</Btn>
+                {!lock ? <Btn onClick={() => { const n = prompt('Your name to lock the schedule'); if (n) { setLock({ name: n, at: now() }); setEditValues(false); } }}>Approve and lock schedule</Btn>
                   : <Btn kind="ghost" onClick={() => { const r = prompt('Reason for unlocking (logged)'); if (r) { setLock(null); setMsg(`Unlocked: ${r} (${now()})`); } }}>Unlock (reason needed)</Btn>}
                 <Btn kind="ghost" onClick={() => download('schedule.csv', toCsv(scheduleRows(ds, settings).map((r) => ({ group_id: r.groupId, region: r.region, city: r.city, date: r.date, phase: r.phase, half: r.half }))))}>Download schedule.csv</Btn>
                 <Btn kind="ghost" onClick={() => download('city_groups.csv', toCsv(ds.regions.flatMap((r) => r.pixelCities.map((c) => ({ city: c, group_id: r.group, state: r.trendsRegion, reason: r.group === 3 ? 'Delhi NCR spans Delhi, Haryana and Uttar Pradesh' : 'Google Trends gives data by state' })))))}>Download city_groups.csv</Btn>
