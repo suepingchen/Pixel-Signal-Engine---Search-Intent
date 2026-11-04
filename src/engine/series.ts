@@ -5,8 +5,9 @@ import { windowOf } from './schedule';
 export interface RegionSeries { region: string; group: number; dates: string[]; values: number[]; zeroShare: number; thin: boolean; }
 
 /**
- * Daily search series per Trends region: the sum of all terms from the same request (they share one scale).
- * Values are never added across regions.
+ * Daily search series per Trends region: the sum of all terms from the same request (they share one scale),
+ * rescaled so the region's peak day is 100, like Google Trends itself. Lifts are percentages, so the rescale
+ * does not change any result. Values are never added across regions.
  */
 export function regionSeries(ds: Dataset, s: Settings): RegionSeries[] {
   const w = windowOf(s);
@@ -24,6 +25,8 @@ export function regionSeries(ds: Dataset, s: Settings): RegionSeries[] {
     for (let d = w.baselineStart; d <= w.end; d = addDays(d, 1)) {
       if (byDate.has(d)) { dates.push(d); values.push(byDate.get(d)!); }
     }
+    const peak = Math.max(0, ...values);
+    if (peak > 0) for (let i = 0; i < values.length; i++) values[i] = Math.round((values[i] / peak) * 1000) / 10;
     const zeros = [...zeroByDate.values()].filter(Boolean).length;
     const zeroShare = zeroByDate.size ? zeros / zeroByDate.size : 1;
     out.push({ region: reg.trendsRegion, group: reg.group, dates, values, zeroShare, thin: zeroShare > s.zeroShareMax || dates.length === 0 });
