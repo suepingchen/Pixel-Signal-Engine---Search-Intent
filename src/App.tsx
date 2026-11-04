@@ -182,7 +182,7 @@ export default function App() {
                 return (
                   <div key={s.region} className="border border-slate-100 rounded-lg p-2">
                     <div className="flex justify-between text-xs mb-1">
-                      <b>{s.region} · group {s.group} ({half})</b>
+                      <b>Group {s.group} ({half}) · {s.region}: {ds.regions.find((r) => r.trendsRegion === s.region)?.pixelCities.join(', ')}</b>
                       <span className={s.thin ? 'text-amber-700' : 'text-slate-500'}>{s.thin ? `Too thin to read (${Math.round(s.zeroShare * 100)}% zero days)` : `${ds.trendsResolution} · ${s.dates.length} days`}</span>
                     </div>
                     <SeriesChart dates={s.dates} values={s.values} phases={s.dates.map((d) => phaseOf(d, half, settings))} />
