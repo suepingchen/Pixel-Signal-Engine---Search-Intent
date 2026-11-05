@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DEFAULT_SETTINGS, DILUTION_WARNING, TRENDS_GEO_CODE, fmtP } from './engine/config';
 import { sampleDataset } from './engine/sample';
 import { buildGroups, phaseOf, scheduleRows, windowOf } from './engine/schedule';
@@ -10,22 +10,35 @@ import { act } from './engine/act';
 import { deliveryCheck } from './engine/delivery';
 import { Approval, readoutMarkdown, toCsv } from './engine/readout';
 import { parseBrandLift, parseBudget, parseCalendar, parseDeviceLift, parseMeta, parseTrends } from './engine/csv';
-import { Dataset, Settings } from './engine/types';
+import { Dataset, Settings, TrendsPoint } from './engine/types';
 import { addDays } from './engine/util';
 import { Btn, Card, Note, Table, download } from './components/ui';
 import { Legend, SeriesChart } from './components/Chart';
 
 const TABS = ['1. Setup', '2. Google Trends', '3. Sizing check', '4. Find', '5. Prove', '6. Act', '7. Weekly readout'] as const;
 const pct = (v: number) => (isFinite(v) ? `${v.toFixed(1)}%` : 'n/a');
+const STORE_KEY = 'pixel-signal-engine:v1';
+interface Saved { settings: Settings; lock: { name: string; at: string } | null; approvals: Approval[] }
+function loadSaved(): Partial<Saved> {
+  try { const raw = localStorage.getItem(STORE_KEY); return raw ? (JSON.parse(raw) as Partial<Saved>) : {}; } catch { return {}; }
+}
+const saved = loadSaved();
 const now = () => new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST';
 
 export default function App() {
   const [tab, setTab] = useState<(typeof TABS)[number]>(TABS[0]);
-  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
-  const [ds, setDs] = useState<Dataset>(() => sampleDataset(DEFAULT_SETTINGS));
-  const [lock, setLock] = useState<{ name: string; at: string } | null>(null);
+  const [settings, setSettings] = useState<Settings>(() => ({ ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) }));
+  const [ds, setDs] = useState<Dataset>(() => sampleDataset({ ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) }));
+  const [lock, setLock] = useState<{ name: string; at: string } | null>(saved.lock ?? null);
   const [editValues, setEditValues] = useState(false);
-  const [approvals, setApprovals] = useState<Approval[]>([]);
+  const [approvals, setApprovals] = useState<Approval[]>(saved.approvals ?? []);
+  const [pulling, setPulling] = useState(false);
+  const [lastPull, setLastPull] = useState<TrendsPoint[] | null>(null);
+
+  // Keep the test settings, the schedule lock and the approval log in this browser, so a refresh doesn't lose them.
+  useEffect(() => {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ settings, lock, approvals } satisfies Saved)); } catch { /* storage blocked: keep working in memory */ }
+  }, [settings, lock, approvals]);
   const [msg, setMsg] = useState('');
 
   const series = useMemo(() => regionSeries(ds, settings), [ds, settings]);
@@ -44,7 +57,7 @@ export default function App() {
     try {
       const base: Dataset = ds.label === 'Uploaded data' ? ds : { ...ds, label: 'Uploaded data', trends: [], meta: [], brandLift: [], deviceLift: [], budget: [], calendar: [] };
       const next: Dataset = { ...base };
-      if (kind === 'trends') next.trends = [...base.trends, ...parseTrends(text)];
+      if (kind === 'trends') { const add = parseTrends(text); const regs = new Set(add.map((p) => p.region)); next.trends = [...base.trends.filter((p) => !regs.has(p.region)), ...add]; }
       if (kind === 'meta') next.meta = parseMeta(text, cityToRegion);
       if (kind === 'brand') next.brandLift = parseBrandLift(text);
       if (kind === 'device') next.deviceLift = parseDeviceLift(text);
@@ -55,6 +68,40 @@ export default function App() {
     } catch (e) {
       setMsg(`Could not read ${file.name}: ${(e as Error).message}`);
     }
+  }
+
+  /** Pull all states from Google Trends (via SerpApi on the server), one request per state, the whole period at once. */
+  async function loadFromTrends() {
+    const today = new Date().toISOString().slice(0, 10);
+    const to = w.end < today ? w.end : today;
+    if (to <= w.baselineStart) { setMsg(`Nothing to pull yet: the baseline starts on ${w.baselineStart}.`); return; }
+    setPulling(true);
+    const points: TrendsPoint[] = [];
+    const failed: string[] = [];
+    let weekly = false;
+    for (const [i, reg] of ds.regions.entries()) {
+      setMsg(`Pulling Google Trends ${i + 1} of ${ds.regions.length}: ${reg.trendsRegion}...`);
+      try {
+        const r = await fetch('/api/trends', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ terms: settings.searchTerms.slice(0, 5), geo: TRENDS_GEO_CODE[reg.trendsRegion], from: w.baselineStart, to }) });
+        const j = (await r.json()) as { points?: { date: string; term: string; value: number; belowOne?: boolean }[]; resolution?: string; error?: string };
+        if (!r.ok || !j.points) throw new Error(j.error ?? `HTTP ${r.status}`);
+        if (j.resolution === 'weekly') weekly = true;
+        for (const p of j.points) points.push({ region: reg.trendsRegion, date: p.date, term: p.term, value: p.value, belowOne: p.belowOne });
+      } catch (e) {
+        failed.push(`${reg.trendsRegion} (${(e as Error).message})`);
+      }
+    }
+    setPulling(false);
+    if (!points.length) { setMsg(`Google Trends pull failed: ${failed.join('; ')}`); return; }
+    const base: Dataset = ds.label === 'Uploaded data' ? ds : { ...ds, label: 'Uploaded data', trends: [], meta: [], brandLift: [], deviceLift: [], budget: [], calendar: [] };
+    const pulled = new Set(points.map((p) => p.region));
+    setDs({ ...base, trends: [...base.trends.filter((p) => !pulled.has(p.region)), ...points], trendsResolution: weekly ? 'weekly' : 'daily' });
+    setLastPull(points);
+    setMsg(`Loaded Google Trends for ${pulled.size} of ${ds.regions.length} states, ${w.baselineStart} to ${to} (${now()}).`
+      + (weekly ? ' Trends returned weekly numbers, so the 3 washout days cannot be left out: pull a shorter range.' : '')
+      + (failed.length ? ` Not loaded: ${failed.join('; ')}.` : '')
+      + ' Download the saved pull and keep it: the final read should use one saved pull.');
   }
 
   async function connectionTest() {
@@ -164,11 +211,14 @@ export default function App() {
                   </label>
                 ))}
               </div>
-              <div className="flex gap-2 mt-3">
+              <div className="flex flex-wrap gap-2 mt-3">
+                <Btn disabled={pulling} onClick={loadFromTrends}>{pulling ? 'Pulling Google Trends...' : 'Load from Google Trends'}</Btn>
+                {lastPull && <Btn kind="ghost" onClick={() => download(`trends_saved_pull_${new Date().toISOString().slice(0, 10)}.csv`, toCsv(lastPull.map((p) => ({ region: p.region, date: p.date, term: p.term, index_value: p.belowOne ? '<1' : p.value }))))}>Download saved pull</Btn>}
                 <Btn kind="ghost" disabled={!!lock} onClick={() => { setDs(sampleDataset(settings)); setMsg('Sample data restored'); }}>Use sample data</Btn>
                 <Btn kind="ghost" disabled={!!lock} onClick={() => setDs({ ...ds, groups: buildGroups(ds.regions) })}>Re-balance halves</Btn>
                 {lock && <span className="text-[11px] text-slate-500 self-center">City groups and halves are locked. Unlock (with a logged reason) to change them.</span>}
               </div>
+              <p className="text-[11px] text-slate-500 mt-2">Load from Google Trends pulls all {ds.regions.length} states (one request each, about {ds.regions.length} SerpApi searches) from the baseline start to today. It needs SERPAPI_API_KEY on the server. For the final read, re-upload the saved pull in the Google Trends box above instead of pulling again.</p>
             </Card>
           </>
         )}
